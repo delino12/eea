@@ -17,7 +17,7 @@ class FakeLocator:
     async def is_visible(self, timeout: int) -> bool:
         return self.visible
 
-    async def click(self) -> None:
+    async def click(self, **kwargs) -> None:
         self.clicks += 1
 
     async def fill(self, value: str) -> None:
@@ -25,6 +25,12 @@ class FakeLocator:
 
     async def select_option(self, label: str) -> None:
         self.selected_labels.append(label)
+
+    async def dispatch_event(self, event_name: str) -> None:
+        return None
+
+    async def scroll_into_view_if_needed(self, timeout: int) -> None:
+        return None
 
 
 class FakeTimerPage:

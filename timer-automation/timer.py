@@ -54,6 +54,7 @@ async def select_project(page: Page, project_name: str, timeout: int) -> None:
             dropdown = page.locator(selector).first
             if await dropdown.is_visible(timeout=2500):
                 await dropdown.select_option(label=project_name)
+                await dropdown.dispatch_event("change")
                 logger.info("Selected native project dropdown option %s", project_name)
                 return
         except Exception:
@@ -114,6 +115,8 @@ async def fill_task(page: Page, task_text: str, timeout: int) -> None:
             field = page.locator(selector).first
             if await field.is_visible(timeout=2500):
                 await field.fill(task_text)
+                await field.dispatch_event("input")
+                await field.dispatch_event("change")
                 logger.info("Filled timer task input")
                 return
         except Exception:
@@ -129,20 +132,72 @@ async def click_start_timer(page: Page, timeout: int) -> None:
         "button:has-text('Start')",
         "[role='button']:has-text('Start Timer')",
         "[role='button']:has-text('Start')",
+        "text=/^\\s*Start Timer\\s*$/",
+        "*:has-text('Start Timer')",
     )
     for selector in start_selectors:
         try:
             button = page.locator(selector).first
             if await button.is_visible(timeout=2500):
-                await button.click()
-                try:
-                    await page.wait_for_load_state("networkidle", timeout=timeout)
-                except PlaywrightTimeoutError:
-                    logger.warning("Timed out waiting for networkidle after timer start")
+                logger.info("Starting timer using selector %s", selector)
+                await _click_and_wait(button, page, timeout)
                 return
-        except Exception:
+        except PlaywrightTimeoutError:
             continue
-    raise RuntimeError("Could not find start timer button")
+        except Exception as exc:
+            logger.warning("Start timer selector %s failed: %s", selector, exc)
+
+    if await click_start_timer_with_dom(page, timeout):
+        return
+
+    raise RuntimeError("Could not find or click start timer button")
+
+
+async def click_start_timer_with_dom(page: Page, timeout: int) -> bool:
+    try:
+        clicked = await page.evaluate(
+            """
+            () => {
+                const isVisible = (el) => {
+                    const style = window.getComputedStyle(el);
+                    const rect = el.getBoundingClientRect();
+                    return style.visibility !== 'hidden'
+                        && style.display !== 'none'
+                        && rect.width > 0
+                        && rect.height > 0;
+                };
+                const candidates = Array.from(
+                    document.querySelectorAll('button, [role="button"], input[type="submit"], a, div, span')
+                );
+                const target = candidates.find((el) => /start\\s*timer/i.test(el.textContent || '') && isVisible(el));
+                if (!target) {
+                    return false;
+                }
+                const clickable = target.closest('button, [role="button"], input[type="submit"], a') || target;
+                clickable.click();
+                return true;
+            }
+            """
+        )
+        if clicked:
+            logger.info("Starting timer using DOM text fallback")
+            try:
+                await page.wait_for_load_state("networkidle", timeout=timeout)
+            except PlaywrightTimeoutError:
+                logger.warning("Timed out waiting for networkidle after timer start")
+            return True
+    except Exception as exc:
+        logger.warning("DOM fallback failed while clicking start timer: %s", exc)
+    return False
+
+
+async def _click_and_wait(locator, page: Page, timeout: int) -> None:
+    await locator.scroll_into_view_if_needed(timeout=timeout)
+    await locator.click(timeout=timeout)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=timeout)
+    except PlaywrightTimeoutError:
+        logger.warning("Timed out waiting for networkidle after timer start")
 
 
 async def _is_visible(page: Page, selector: str, timeout: int) -> bool:
