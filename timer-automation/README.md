@@ -62,6 +62,7 @@ For non-headless operation in Docker, you need an X server or VNC-capable runtim
 
 ```dotenv
 APP_URL=https://timer.dev.webforxtech.com
+LOGIN_PATH=/login
 LOGIN_EMAIL=
 LOGIN_PASSWORD=
 SMTP_HOST=

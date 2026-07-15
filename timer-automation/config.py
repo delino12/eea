@@ -36,6 +36,7 @@ class Settings:
     headless: bool
     login_timeout: int
     logout_time: str
+    login_path: str = "/login"
     storage_state_path: Path = STORAGE_STATE_PATH
     screenshot_dir: Path = SCREENSHOT_DIR
     log_dir: Path = LOG_DIR
@@ -43,6 +44,10 @@ class Settings:
     @property
     def timer_url(self) -> str:
         return f"{self.app_url.rstrip('/')}/timer"
+
+    @property
+    def login_url(self) -> str:
+        return f"{self.app_url.rstrip('/')}/{self.login_path.strip('/')}"
 
 
 def _parse_bool(value: str) -> bool:
@@ -94,6 +99,7 @@ def load_settings(env_file: str | Path | None = None, validate: bool = True) -> 
 
     settings = Settings(
         app_url=env.get("APP_URL", "https://timer.dev.webforxtech.com").rstrip("/"),
+        login_path=env.get("LOGIN_PATH", "/login"),
         login_email=env.get("LOGIN_EMAIL", ""),
         login_password=env.get("LOGIN_PASSWORD", ""),
         smtp_host=env.get("SMTP_HOST", ""),

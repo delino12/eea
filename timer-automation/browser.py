@@ -82,6 +82,21 @@ async def capture_screenshot(page: Page | None, directory: Path, prefix: str) ->
         return None
 
 
+async def save_page_html(page: Page | None, directory: Path, prefix: str) -> str | None:
+    if page is None:
+        return None
+    directory.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(TIMEZONE).strftime("%Y%m%d_%H%M%S")
+    path = directory / f"{prefix}_{timestamp}.html"
+    try:
+        path.write_text(await page.content(), encoding="utf-8")
+        logger.info("Saved page HTML to %s", path)
+        return str(path)
+    except Exception:
+        logger.exception("Failed to save page HTML")
+        return None
+
+
 async def goto_and_wait(page: Page, url: str, timeout: int) -> None:
     logger.info("Navigating to %s", url)
     await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
