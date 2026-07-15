@@ -2,7 +2,7 @@
 
 Playwright-based weekday login/logout automation for `https://timer.dev.webforxtech.com`.
 
-The automation logs in, opens `/timer`, and leaves the page alone for a human to operate. It never clicks timer controls, project selectors, task title fields, or start/stop buttons. During the day it only checks that the page is alive and still appears authenticated.
+The automation logs in, opens `/timer`, selects the configured project, fills the configured task, starts the timer, stops it at `LOGOUT_TIME`, logs out, and emails a report.
 
 ## Setup
 
@@ -18,13 +18,13 @@ Fill `.env` with real credentials and SMTP values. Do not commit `.env`.
 
 ## Run Manually
 
-Login and keep the browser open until `LOGOUT_TIME`:
+Login, start the configured timer entry, keep the browser open until `LOGOUT_TIME`, then stop and log out:
 
 ```bash
 python app.py --action=login
 ```
 
-Logout using the persisted Playwright session state:
+Stop the timer if it is running, then log out using the persisted Playwright session state:
 
 ```bash
 python app.py --action=logout
@@ -36,7 +36,7 @@ Run APScheduler:
 python app.py --action=scheduler
 ```
 
-The scheduler registers weekday jobs in `Africa/Lagos`: login at `09:00`, logout at `LOGOUT_TIME` from `.env` (`18:00` by default). In scheduler mode, the same browser page is kept open between login and logout.
+The scheduler registers weekday jobs in `Africa/Lagos`: login/start timer at `09:00`, stop/logout at `LOGOUT_TIME` from `.env` (`18:00` by default). In scheduler mode, the same browser page is kept open between login and logout.
 
 ## Cron Alternative
 
@@ -47,7 +47,7 @@ Install with `crontab -e` after replacing paths with your deployment path:
 0 18 * * 1-5 /path/to/timer-automation/.venv/bin/python /path/to/timer-automation/app.py --action=logout
 ```
 
-A copy is provided in `crontab.sample`.
+A copy is provided in `crontab.sample`. Prefer `python app.py --action=scheduler` when you want one browser session to remain open all day.
 
 ## Docker
 
@@ -75,6 +75,8 @@ EMAIL_CC=
 HEADLESS=true
 LOGIN_TIMEOUT=30000
 LOGOUT_TIME=18:00
+TIMER_PROJECT=Web Forx Technology
+TIMER_TASK=Start work today on Webforx Technologies - Edusuc | Lafabah | Iyaloja | Webforx Website Review
 ```
 
 `EMAIL_TO` and `EMAIL_CC` accept comma-separated addresses.
@@ -94,6 +96,8 @@ The test suite uses mocks for Playwright and SMTP; it does not contact the timer
 ## Troubleshooting
 
 If login fails after a UI change, inspect the failure screenshot in `logs/screenshots/` and update the email, password, submit, or authenticated-state selectors in `login.py`.
+
+If timer start/stop fails, inspect the screenshot and update selectors in `timer.py`.
 
 If logout fails, inspect the screenshot and update profile menu or logout selectors in `logout.py`.
 

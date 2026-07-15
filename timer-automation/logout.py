@@ -8,6 +8,7 @@ from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from browser import BrowserFactory, capture_screenshot, goto_and_wait, is_login_url
 from config import Settings, TIMEZONE
+from timer import stop_timer_if_running
 
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ class LogoutService:
                 for attempts in range(1, 4):
                     try:
                         logger.info("Logout attempt %s", attempts)
+                        await stop_timer_if_running(page, self.settings)
                         await perform_logout(page, self.settings)
                         return LogoutResult(
                             success=True,

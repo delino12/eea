@@ -15,6 +15,10 @@ STORAGE_STATE_PATH = LOG_DIR / "storage_state.json"
 SCREENSHOT_DIR = LOG_DIR / "screenshots"
 TIMEZONE_NAME = "Africa/Lagos"
 TIMEZONE = ZoneInfo(TIMEZONE_NAME)
+DEFAULT_TIMER_PROJECT = "Web Forx Technology"
+DEFAULT_TIMER_TASK = (
+    "Start work today on Webforx Technologies - Edusuc | Lafabah | Iyaloja | Webforx Website Review"
+)
 
 
 class ConfigError(ValueError):
@@ -36,6 +40,8 @@ class Settings:
     headless: bool
     login_timeout: int
     logout_time: str
+    timer_project: str = DEFAULT_TIMER_PROJECT
+    timer_task: str = DEFAULT_TIMER_TASK
     login_path: str = "/login"
     storage_state_path: Path = STORAGE_STATE_PATH
     screenshot_dir: Path = SCREENSHOT_DIR
@@ -112,6 +118,8 @@ def load_settings(env_file: str | Path | None = None, validate: bool = True) -> 
         headless=_parse_bool(env.get("HEADLESS", "true")),
         login_timeout=login_timeout,
         logout_time=env.get("LOGOUT_TIME", "18:00"),
+        timer_project=env.get("TIMER_PROJECT", DEFAULT_TIMER_PROJECT),
+        timer_task=env.get("TIMER_TASK", DEFAULT_TIMER_TASK),
     )
 
     if validate and not settings.email_to:

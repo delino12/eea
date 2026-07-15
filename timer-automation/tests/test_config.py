@@ -37,6 +37,8 @@ def test_load_settings_parses_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.headless is False
     assert settings.login_timeout == 12345
     assert settings.logout_time == "17:30"
+    assert settings.timer_project == "Web Forx Technology"
+    assert settings.timer_task.startswith("Start work today on Webforx Technologies")
 
 
 def test_load_settings_requires_credentials(monkeypatch: pytest.MonkeyPatch) -> None:

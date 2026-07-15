@@ -8,6 +8,8 @@ from playwright.async_api import Error as PlaywrightError, Page, TimeoutError as
 
 from browser import BrowserFactory, capture_screenshot, goto_and_wait, is_session_authenticated, save_page_html
 from config import Settings, TIMEZONE
+from logout import perform_logout
+from timer import start_timer, stop_timer_if_running
 
 
 logger = logging.getLogger(__name__)
@@ -40,10 +42,14 @@ class LoginService:
                     await session.context.storage_state(path=str(self.settings.storage_state_path))
                     logger.info("Persisted storage state to %s", self.settings.storage_state_path)
                     await goto_and_wait(page, self.settings.timer_url, self.settings.login_timeout)
-                    logger.info("Timer page loaded; no timer controls will be touched")
+                    logger.info("Timer page loaded")
+                    await start_timer(page, self.settings)
 
                     if keep_open:
                         await monitor_timer_page_until_logout(page, self.settings)
+                        if not page.is_closed():
+                            await stop_timer_if_running(page, self.settings)
+                            await perform_logout(page, self.settings)
 
                     return LoginResult(
                         success=True,
@@ -138,7 +144,7 @@ async def monitor_timer_page_until_logout(page: Page, settings: Settings, interv
                 return
             await page.title()
             if not await is_session_authenticated(page):
-                logger.warning("Session appears expired; will not re-authenticate or touch timer controls")
+                logger.warning("Session appears expired; will not re-authenticate")
             else:
                 logger.info("Timer page session check OK")
         except PlaywrightError:

@@ -1,2 +1,3 @@
 0 9 * * 1-5  /path/to/timer-automation/.venv/bin/python /path/to/timer-automation/app.py --action=login
+# Optional fallback if the long-running login process exits before 18:00:
 0 18 * * 1-5 /path/to/timer-automation/.venv/bin/python /path/to/timer-automation/app.py --action=logout

@@ -15,6 +15,7 @@ from logger import configure_logging
 from login import LoginResult, LoginService, monitor_timer_page_until_logout, perform_login
 from logout import LogoutResult, LogoutService, perform_logout
 from scheduler import create_scheduler
+from timer import start_timer, stop_timer_if_running
 
 
 logger = logging.getLogger(__name__)
@@ -86,10 +87,11 @@ class TimerAutomationRuntime:
             await perform_login(page, self.settings)
             await self._session.context.storage_state(path=str(self.settings.storage_state_path))
             await goto_and_wait(page, self.settings.timer_url, self.settings.login_timeout)
+            await start_timer(page, self.settings)
             self._monitor_task = asyncio.create_task(
                 monitor_timer_page_until_logout(page, self.settings, interval_seconds=90)
             )
-            logger.info("Scheduler login finished; timer page is open for human operation")
+            logger.info("Scheduler login finished; timer has been started")
         except Exception as exc:
             logger.exception("Scheduler login job failed")
             screenshot = await capture_screenshot(page, self.settings.screenshot_dir, "scheduler_login_failure")
@@ -116,6 +118,7 @@ class TimerAutomationRuntime:
 
         try:
             if self._session is not None and not self._session.page.is_closed():
+                await stop_timer_if_running(self._session.page, self.settings)
                 await perform_logout(self._session.page, self.settings)
                 success = True
             else:
