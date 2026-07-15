@@ -12,6 +12,7 @@ class FakeLocator:
         self.visible = visible
         self.clicks = 0
         self.filled: list[str] = []
+        self.selected_labels: list[str] = []
 
     async def is_visible(self, timeout: int) -> bool:
         return self.visible
@@ -22,11 +23,15 @@ class FakeLocator:
     async def fill(self, value: str) -> None:
         self.filled.append(value)
 
+    async def select_option(self, label: str) -> None:
+        self.selected_labels.append(label)
+
 
 class FakeTimerPage:
     def __init__(self, project_visible: bool = True, stop_visible: bool = True) -> None:
         self.project_text = FakeLocator(project_visible)
-        self.project_dropdown = FakeLocator(True)
+        self.native_project_select = FakeLocator(True)
+        self.project_dropdown = FakeLocator(False)
         self.task_input = FakeLocator(True)
         self.start_button = FakeLocator(True)
         self.stop_button = FakeLocator(stop_visible)
@@ -35,6 +40,8 @@ class FakeTimerPage:
         lowered = selector.lower()
         if selector == "text=Web Forx Technology":
             return self.project_text
+        if lowered.startswith("select") or " + select" in lowered:
+            return self.native_project_select
         if "project-select" in lowered or "combobox" in lowered or "select project" in lowered:
             return self.project_dropdown
         if "task-input" in lowered or "working" in lowered or "name*='task'" in lowered:
@@ -73,6 +80,7 @@ async def test_start_timer_fills_task_and_clicks_start() -> None:
 
     await start_timer(page, _settings())
 
+    assert page.native_project_select.selected_labels == ["Web Forx Technology"]
     assert page.project_dropdown.clicks == 0
     assert page.task_input.filled == [
         "Start work today on Webforx Technologies - Edusuc | Lafabah | Iyaloja | Webforx Website Review"

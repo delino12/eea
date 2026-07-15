@@ -43,9 +43,21 @@ async def stop_timer_if_running(page: Page, settings: Settings) -> bool:
 
 
 async def select_project(page: Page, project_name: str, timeout: int) -> None:
-    if await _is_visible(page, f"text={project_name}", timeout=2000):
-        logger.info("Project %s is already visible/selected", project_name)
-        return
+    native_selectors = (
+        "select[name*='project' i]",
+        "label:has-text('PROJECT') + select",
+        "select:has(option:text-is('Select Project (Optional)'))",
+        "select",
+    )
+    for selector in native_selectors:
+        try:
+            dropdown = page.locator(selector).first
+            if await dropdown.is_visible(timeout=2500):
+                await dropdown.select_option(label=project_name)
+                logger.info("Selected native project dropdown option %s", project_name)
+                return
+        except Exception:
+            continue
 
     dropdown_selectors = (
         "[data-testid='project-select']",
@@ -54,7 +66,6 @@ async def select_project(page: Page, project_name: str, timeout: int) -> None:
         "[role='combobox']",
         "button:has-text('Select project')",
         "button:has-text('Project')",
-        "select[name*='project' i]",
     )
     for selector in dropdown_selectors:
         try:
