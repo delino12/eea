@@ -24,15 +24,22 @@ async def stop_timer_if_running(page: Page, settings: Settings) -> bool:
         "[data-test='stop-timer']",
         "button:has-text('Stop Timer')",
         "button:has-text('Stop')",
+        "button:has-text('End Timer')",
+        "button:has-text('End')",
         "[role='button']:has-text('Stop Timer')",
         "[role='button']:has-text('Stop')",
+        "[role='button']:has-text('End Timer')",
+        "[role='button']:has-text('End')",
+        "text=/^\\s*Stop Timer\\s*$/",
+        "text=/^\\s*Stop\\s*$/",
     )
     for selector in stop_selectors:
         try:
             button = page.locator(selector).first
             if await button.is_visible(timeout=2500):
                 logger.info("Stopping timer using selector %s", selector)
-                await button.click()
+                await button.scroll_into_view_if_needed(timeout=settings.login_timeout)
+                await button.click(timeout=settings.login_timeout)
                 await page.wait_for_load_state("networkidle", timeout=settings.login_timeout)
                 return True
         except Exception:

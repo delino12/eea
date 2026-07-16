@@ -78,6 +78,22 @@ class LogoutService:
 
 
 async def perform_logout(page: Page, settings: Settings) -> None:
+    direct_logout_selectors = (
+        "[data-testid='sign-out']",
+        "[data-test='sign-out']",
+        "[data-testid='logout']",
+        "[data-test='logout']",
+        "a:has-text('Sign out')",
+        "button:has-text('Sign out')",
+        "[role='menuitem']:has-text('Sign out')",
+        "[role='button']:has-text('Sign out')",
+        "text=/sign\\s*out/i",
+        "a:has-text('Logout')",
+        "button:has-text('Logout')",
+        "[role='menuitem']:has-text('Logout')",
+        "[role='button']:has-text('Logout')",
+        "text=/log\\s*out/i",
+    )
     menu_selectors = (
         "[data-testid='user-menu']",
         "[data-test='user-menu']",
@@ -85,19 +101,16 @@ async def perform_logout(page: Page, settings: Settings) -> None:
         "button[aria-label*='account' i]",
         "img[alt*='avatar' i]",
     )
-    logout_selectors = (
-        "[data-testid='logout']",
-        "[data-test='logout']",
-        "button:has-text('Logout')",
-        "a:has-text('Logout')",
-        "text=/log out/i",
-    )
+    if await click_logout_action(page, direct_logout_selectors, "direct/sidebar"):
+        await confirm_logged_out(page, settings)
+        return
 
     opened_menu = False
     for selector in menu_selectors:
         try:
             target = page.locator(selector).first
             if await target.is_visible(timeout=2000):
+                await target.scroll_into_view_if_needed(timeout=settings.login_timeout)
                 await target.click()
                 opened_menu = True
                 break
@@ -107,20 +120,64 @@ async def perform_logout(page: Page, settings: Settings) -> None:
     if not opened_menu:
         logger.warning("Profile menu selector not found; trying visible logout action directly")
 
-    clicked_logout = False
-    for selector in logout_selectors:
+    if not await click_logout_action(page, direct_logout_selectors, "profile/direct fallback"):
+        raise RuntimeError("Could not find logout control")
+
+    await confirm_logged_out(page, settings)
+
+
+async def click_logout_action(page: Page, selectors: tuple[str, ...], source: str) -> bool:
+    for selector in selectors:
         try:
             target = page.locator(selector).first
             if await target.is_visible(timeout=3000):
-                await target.click()
-                clicked_logout = True
-                break
-        except Exception:
+                logger.info("Clicking %s sign-out control using selector %s", source, selector)
+                await target.scroll_into_view_if_needed(timeout=5000)
+                await target.click(timeout=5000)
+                return True
+        except Exception as exc:
+            logger.debug("Logout selector %s did not work: %s", selector, exc)
             continue
 
-    if not clicked_logout:
-        raise RuntimeError("Could not find logout control")
+    return await click_logout_with_dom(page, source)
 
+
+async def click_logout_with_dom(page: Page, source: str) -> bool:
+    try:
+        clicked = await page.evaluate(
+            """
+            () => {
+                const isVisible = (el) => {
+                    const style = window.getComputedStyle(el);
+                    const rect = el.getBoundingClientRect();
+                    return style.visibility !== 'hidden'
+                        && style.display !== 'none'
+                        && rect.width > 0
+                        && rect.height > 0;
+                };
+                const candidates = Array.from(
+                    document.querySelectorAll('a, button, [role="button"], [role="menuitem"], div, span')
+                );
+                const target = candidates.find((el) => /(sign\\s*out|log\\s*out|logout)/i.test(el.textContent || '')
+                    && isVisible(el));
+                if (!target) {
+                    return false;
+                }
+                const clickable = target.closest('a, button, [role="button"], [role="menuitem"]') || target;
+                clickable.click();
+                return true;
+            }
+            """
+        )
+        if clicked:
+            logger.info("Clicking %s sign-out control using DOM text fallback", source)
+            return True
+    except Exception as exc:
+        logger.debug("DOM sign-out fallback failed: %s", exc)
+    return False
+
+
+async def confirm_logged_out(page: Page, settings: Settings) -> None:
     try:
         await page.wait_for_url(lambda url: "/login" in url.lower(), timeout=settings.login_timeout)
     except PlaywrightTimeoutError as exc:
